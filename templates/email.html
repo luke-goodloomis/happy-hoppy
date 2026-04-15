@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}{{ email.subject or '(no subject)' }} – Happy Hoppy{% endblock %}
+
+{% block content %}
+
+<div class="mb-3">
+  <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+<div class="row g-4">
+
+  <!-- Main email pane -->
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom py-3">
+        <h5 class="mb-0 fw-semibold">{{ email.subject or '(no subject)' }}</h5>
+      </div>
+      <div class="card-body px-4 py-3">
+
+        <!-- From / Date / Folder -->
+        <table class="table table-sm table-borderless meta-table mb-3">
+          <tbody>
+            <tr>
+              <th class="text-muted fw-normal small" style="width:90px">From</th>
+              <td>
+                <span class="fw-semibold">{{ email.sender_name or '—' }}</span>
+                {% if email.sender_email_smtp or email.sender_email_raw %}
+                <span class="text-muted small ms-1">
+                  &lt;{{ email.sender_email_smtp or email.sender_email_raw }}&gt;
+                </span>
+                {% endif %}
+              </td>
+            </tr>
+            {% set to_list = recipients | selectattr('type', 'equalto', 'To') | list %}
+            {% set cc_list = recipients | selectattr('type', 'equalto', 'CC') | list %}
+            {% if to_list %}
+            <tr>
+              <th class="text-muted fw-normal small">To</th>
+              <td class="small">
+                {% for r in to_list %}
+                <span class="recipient-chip">{{ r.name or r.email_smtp or r.email_raw }}</span>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </td>
+            </tr>
+            {% endif %}
+            {% if cc_list %}
+            <tr>
+              <th class="text-muted fw-normal small">CC</th>
+              <td class="small">
+                {% for r in cc_list %}
+                <span class="recipient-chip">{{ r.name or r.email_smtp or r.email_raw }}</span>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </td>
+            </tr>
+            {% endif %}
+            <tr>
+              <th class="text-muted fw-normal small">Date</th>
+              <td class="small">{{ email.date_received or email.date_sent or '—' }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted fw-normal small">Folder</th>
+              <td class="small text-muted">{{ email.folder_path or '—' }}</td>
+            </tr>
+            {% if email.categories %}
+            <tr>
+              <th class="text-muted fw-normal small">Categories</th>
+              <td class="small">
+                {% for cat in email.categories.split(',') %}
+                <span class="badge bg-secondary me-1">{{ cat.strip() }}</span>
+                {% endfor %}
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <!-- Attachments -->
+        {% if attachments %}
+        <div class="mb-3">
+          <div class="d-flex flex-wrap gap-2">
+            {% for a in attachments %}
+            <span class="badge border text-body bg-light py-2 px-3">
+              <i class="fa-solid fa-paperclip me-1 text-muted"></i>
+              {{ a.filename or '(attachment)' }}
+              {% if a.size_bytes %}<span class="text-muted ms-1">({{ (a.size_bytes / 1024)|round(1) }} KB)</span>{% endif %}
+            </span>
+            {% endfor %}
+          </div>
+          <small class="text-muted d-block mt-1">
+            <i class="fa-solid fa-circle-info me-1"></i>Attachment metadata only — file contents were not extracted.
+          </small>
+        </div>
+        {% endif %}
+
+        <hr class="my-3">
+
+        <!-- Body: HTML preferred, fall back to plain text -->
+        {% if html_body %}
+        <div class="email-body-wrapper">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <small class="text-muted">
+              <i class="fa-solid fa-shield-halved me-1"></i>
+              External images blocked. <a href="#" id="show-images-btn">Show anyway</a>
+            </small>
+            <small>
+              <a href="#" id="toggle-plaintext">Switch to plain text</a>
+            </small>
+          </div>
+          <iframe id="email-html-frame" class="email-iframe"
+                  sandbox="allow-same-origin"
+                  srcdoc="{{ html_body | e }}"
+                  title="Email body"></iframe>
+          <pre id="email-plaintext" class="email-plaintext d-none">{{ email.body_text or '' }}</pre>
+        </div>
+        {% elif email.body_text %}
+        <pre class="email-plaintext">{{ email.body_text }}</pre>
+        {% else %}
+        <p class="text-muted">(no body)</p>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar: search actions -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white border-bottom fw-semibold small">
+        <i class="fa-solid fa-magnifying-glass me-1"></i>Related Searches
+      </div>
+      <div class="card-body d-flex flex-column gap-2">
+        {% if email.sender_name %}
+        <a href="{{ url_for('search', type='emails', sender=email.sender_email_smtp or email.sender_email_raw or email.sender_name) }}"
+           class="btn btn-sm btn-outline-primary w-100 text-start">
+          <i class="fa-regular fa-user me-2"></i>More from {{ email.sender_name }}
+        </a>
+        {% endif %}
+        {% if email.folder_path %}
+        <a href="{{ url_for('search', type='emails', folder=email.folder_path) }}"
+           class="btn btn-sm btn-outline-secondary w-100 text-start">
+          <i class="fa-solid fa-folder me-2"></i>{{ email.folder_path.split('/')[-1] or 'Folder' }}
+        </a>
+        {% endif %}
+        {% if email.subject %}
+        <a href="{{ url_for('search', type='emails', q='"' + email.subject[:50] + '"') }}"
+           class="btn btn-sm btn-outline-secondary w-100 text-start text-truncate">
+          <i class="fa-solid fa-quote-left me-2"></i>Subject: {{ email.subject[:40] }}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom fw-semibold small">
+        <i class="fa-solid fa-circle-info me-1"></i>Metadata
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-borderless small mb-0 px-2">
+          <tr><th class="text-muted fw-normal ps-3">ID</th><td>{{ email.id }}</td></tr>
+          <tr><th class="text-muted fw-normal ps-3">Importance</th>
+            <td>
+              {% if email.importance == 2 %}<span class="text-danger">High</span>
+              {% elif email.importance == 0 %}<span class="text-muted">Low</span>
+              {% else %}Normal{% endif %}
+            </td>
+          </tr>
+          <tr><th class="text-muted fw-normal ps-3">Source</th><td>{{ email.pst_source or '—' }}</td></tr>
+          <tr><th class="text-muted fw-normal ps-3">Message class</th><td>{{ email.message_class or '—' }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const frame = document.getElementById('email-html-frame');
+  const plain = document.getElementById('email-plaintext');
+  const toggleBtn = document.getElementById('toggle-plaintext');
+  const showImgBtn = document.getElementById('show-images-btn');
+
+  // Auto-resize iframe to content height
+  if (frame) {
+    frame.addEventListener('load', () => {
+      try {
+        frame.style.height = frame.contentDocument.body.scrollHeight + 20 + 'px';
+      } catch(e) {}
+    });
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', e => {
+      e.preventDefault();
+      if (frame && plain) {
+        const showingHtml = !frame.classList.contains('d-none');
+        frame.classList.toggle('d-none', showingHtml);
+        plain.classList.toggle('d-none', !showingHtml);
+        toggleBtn.textContent = showingHtml ? 'Switch to HTML' : 'Switch to plain text';
+      }
+    });
+  }
+
+  if (showImgBtn && frame) {
+    showImgBtn.addEventListener('click', e => {
+      e.preventDefault();
+      try {
+        const doc = frame.contentDocument;
+        doc.querySelectorAll('[data-blocked-src]').forEach(img => {
+          img.src = img.dataset.blockedSrc;
+        });
+        showImgBtn.textContent = 'Images shown';
+        showImgBtn.style.pointerEvents = 'none';
+      } catch(err) {}
+    });
+  }
+});
+</script>
+{% endblock %}

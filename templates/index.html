@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Happy Hoppy – Email Search{% endblock %}
+
+{% block content %}
+
+<!-- Stats bar -->
+<div class="row g-3 mb-4">
+  {% set stat_items = [
+    ('fa-envelope',        stats.emails,      'Emails',      url_for('search', type='emails'), 'primary'),
+    ('fa-address-book',    stats.contacts,    'Contacts',    url_for('contacts'),               'success'),
+    ('fa-calendar-days',   stats.calendar,    'Events',      url_for('calendar'),               'warning'),
+    ('fa-paperclip',       stats.attachments, 'Attachments', '#',                               'info'),
+  ] %}
+  {% for icon, count, label, href, color in stat_items %}
+  <div class="col-6 col-md-3">
+    <a href="{{ href }}" class="text-decoration-none">
+      <div class="card stat-card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="stat-icon bg-{{ color }} bg-opacity-10 text-{{ color }}">
+            <i class="fa-solid {{ icon }} fa-lg"></i>
+          </div>
+          <div>
+            <div class="stat-number">{{ "{:,}".format(count) }}</div>
+            <div class="stat-label text-muted small">{{ label }}</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+{% if date_range and date_range[0] %}
+<p class="text-muted small mb-4">
+  <i class="fa-regular fa-clock me-1"></i>
+  Email archive spans <strong>{{ date_range[0][:10] }}</strong> to <strong>{{ date_range[1][:10] }}</strong>
+</p>
+{% endif %}
+
+<div class="row g-4">
+
+  <!-- Recent emails -->
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Recent Emails</span>
+        <a href="{{ url_for('search', type='emails') }}" class="btn btn-sm btn-outline-primary">View all</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+          {% for email in recent %}
+          <a href="{{ url_for('view_email', email_id=email.id) }}"
+             class="list-group-item list-group-item-action px-4 py-3">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1 me-3 overflow-hidden">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  {% if email.has_attachments %}
+                  <i class="fa-solid fa-paperclip text-muted small"></i>
+                  {% endif %}
+                  <span class="fw-semibold text-truncate">{{ email.subject or '(no subject)' }}</span>
+                </div>
+                <small class="text-muted text-truncate d-block">{{ email.sender_name or email.sender_email or '' }}</small>
+              </div>
+              <small class="text-muted text-nowrap">{{ (email.date_received or '')[:10] }}</small>
+            </div>
+          </a>
+          {% else %}
+          <div class="list-group-item text-muted text-center py-4">No emails found.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar stats -->
+  <div class="col-lg-4">
+
+    <!-- Top senders -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white border-bottom fw-semibold">
+        <i class="fa-solid fa-ranking-star me-2 text-warning"></i>Top Senders
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for s in top_senders %}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
+            <a href="{{ url_for('search', type='emails', sender=s.sender) }}"
+               class="text-truncate text-decoration-none text-body small" style="max-width:75%">
+              {{ s.sender_name or s.sender or '(unknown)' }}
+            </a>
+            <span class="badge bg-primary rounded-pill">{{ s.cnt }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Top folders -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom fw-semibold">
+        <i class="fa-solid fa-folder-tree me-2 text-success"></i>Top Folders
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for f in top_folders %}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
+            <a href="{{ url_for('search', type='emails', folder=f.folder_path) }}"
+               class="text-truncate text-decoration-none text-body small" style="max-width:75%"
+               title="{{ f.folder_path }}">
+              {{ f.folder_path.split('/')[-1] or f.folder_path }}
+            </a>
+            <span class="badge bg-success rounded-pill">{{ f.cnt }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

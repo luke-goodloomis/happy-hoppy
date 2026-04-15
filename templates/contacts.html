@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Contacts - Happy Hoppy{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h5 class="mb-0 fw-semibold"><i class="fa-solid fa-address-book me-2 text-success"></i>Contacts</h5>
+  <form method="get" action="{{ url_for('contacts') }}" class="d-flex gap-2">
+    <input type="text" name="q" class="form-control form-control-sm" style="width:260px"
+           placeholder="Search name, company, email..." value="{{ q }}">
+    <button type="submit" class="btn btn-sm btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+    {% if q %}<a href="{{ url_for('contacts') }}" class="btn btn-sm btn-outline-secondary">Clear</a>{% endif %}
+  </form>
+</div>
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white border-bottom small text-muted py-2 px-4">
+    {% if pag.total > 0 %}Showing {{ pag.showing_from }}-{{ pag.showing_to }} of {{ "{:,}".format(pag.total) }} contacts{% else %}No contacts found{% endif %}
+    {% if q %} for "<strong>{{ q }}</strong>"{% endif %}
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Name</th><th>Company</th><th>Title</th><th>Email</th><th>Phone</th></tr>
+      </thead>
+      <tbody>
+        {% for c in results %}
+        <tr class="cursor-pointer" onclick="location.href='{{ url_for('view_contact', contact_id=c.id) }}'">
+          <td class="fw-semibold">{{ c.full_name or '-' }}</td>
+          <td>{{ c.company or '-' }}</td>
+          <td class="text-muted small">{{ c.title or '-' }}</td>
+          <td>{% if c.email1 %}<a href="mailto:{{ c.email1 }}" onclick="event.stopPropagation()">{{ c.email1 }}</a>{% else %}-{% endif %}</td>
+          <td class="text-muted small">{{ c.phone_business or c.phone_mobile or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-5">No contacts found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% if pag.total_pages > 1 %}
+<nav class="mt-3"><ul class="pagination pagination-sm justify-content-center">
+  <li class="page-item {% if not pag.has_prev %}disabled{% endif %}">
+    <a class="page-link" href="{{ url_for('contacts', q=q, page=pag.prev) }}"><i class="fa-solid fa-chevron-left"></i></a>
+  </li>
+  {% for p in range([1, pag.page-2]|max, [pag.total_pages+1, pag.page+3]|min) %}
+  <li class="page-item {% if p == pag.page %}active{% endif %}">
+    <a class="page-link" href="{{ url_for('contacts', q=q, page=p) }}">{{ p }}</a>
+  </li>
+  {% endfor %}
+  <li class="page-item {% if not pag.has_next %}disabled{% endif %}">
+    <a class="page-link" href="{{ url_for('contacts', q=q, page=pag.next) }}"><i class="fa-solid fa-chevron-right"></i></a>
+  </li>
+</ul></nav>
+{% endif %}
+{% endblock %}

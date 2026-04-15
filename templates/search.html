@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}{% if q %}{{ q }} – {% endif %}Search – Happy Hoppy{% endblock %}
+
+{% block content %}
+
+<!-- Filter bar -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="get" action="{{ url_for('search') }}" id="search-filter-form" class="row g-2 align-items-end">
+      <input type="hidden" name="q" value="{{ q }}">
+
+      <!-- Type tabs -->
+      <div class="col-auto">
+        <div class="btn-group btn-group-sm" role="group">
+          {% for t, label, icon in [('emails','Emails','fa-envelope'),('contacts','Contacts','fa-address-book'),('calendar','Calendar','fa-calendar')] %}
+          <input type="radio" class="btn-check" name="type" id="type_{{ t }}" value="{{ t }}"
+                 {% if result_type == t %}checked{% endif %} onchange="this.form.submit()">
+          <label class="btn btn-outline-primary" for="type_{{ t }}">
+            <i class="fa-solid {{ icon }} me-1"></i>{{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if result_type == 'emails' %}
+      <!-- Sender -->
+      <div class="col-md-3">
+        <input type="text" name="sender" class="form-control form-control-sm"
+               placeholder="Sender…" value="{{ sender }}">
+      </div>
+
+      <!-- Folder -->
+      <div class="col-md-2">
+        <select name="folder" class="form-select form-select-sm">
+          <option value="">All folders</option>
+          {% for f in folders %}
+          <option value="{{ f.folder_path }}" {% if folder == f.folder_path %}selected{% endif %}>
+            {{ f.folder_path.split('/')[-1] or f.folder_path }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <!-- Date range -->
+      <div class="col-auto d-flex gap-1 align-items-center">
+        <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}" style="width:145px">
+        <span class="text-muted small">–</span>
+        <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}" style="width:145px">
+      </div>
+
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">
+          <i class="fa-solid fa-filter me-1"></i>Apply
+        </button>
+        <a href="{{ url_for('search', q=q, type=result_type) }}" class="btn btn-sm btn-outline-secondary ms-1">
+          Clear filters
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Results header -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="text-muted small">
+    {% if pag.total > 0 %}
+      Showing {{ pag.showing_from }}–{{ pag.showing_to }} of <strong>{{ "{:,}".format(pag.total) }}</strong> results
+      {% if q %} for <strong>"{{ q }}"</strong>{% endif %}
+    {% else %}
+      No results{% if q %} for <strong>"{{ q }}"</strong>{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Email results ───────────────────────────────────────────────────────── -->
+{% if result_type == 'emails' %}
+<div class="card border-0 shadow-sm">
+  <div class="list-group list-group-flush">
+    {% for r in results %}
+    <a href="{{ url_for('view_email', email_id=r.id) }}"
+       class="list-group-item list-group-item-action result-item px-4 py-3">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <div class="flex-grow-1 overflow-hidden">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            {% if r.has_attachments %}
+            <i class="fa-solid fa-paperclip text-muted" title="Has attachments"></i>
+            {% endif %}
+            <span class="fw-semibold">{{ r.subject or '(no subject)' }}</span>
+          </div>
+          <div class="d-flex gap-3 mb-1">
+            <small class="text-primary">
+              <i class="fa-regular fa-user me-1"></i>{{ r.sender_name or r.sender_email or '(unknown)' }}
+            </small>
+            <small class="text-muted">
+              <i class="fa-solid fa-folder me-1"></i>{{ (r.folder_path or '').split('/')[-1] }}
+            </small>
+          </div>
+          {% if r.snippet %}
+          <p class="snippet text-muted small mb-0">{{ r.snippet | safe }}</p>
+          {% endif %}
+        </div>
+        <small class="text-muted text-nowrap pt-1">{{ (r.date_received or '')[:10] }}</small>
+      </div>
+    </a>
+    {% else %}
+    <div class="list-group-item text-center text-muted py-5">
+      <i class="fa-solid fa-magnifying-glass fa-2x mb-2 d-block"></i>
+      No emails found.
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── Contact results ────────────────────────────────────────────────────── -->
+{% elif result_type == 'contacts' %}
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th><th>Company</th><th>Title</th><th>Email</th><th>Phone</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in results %}
+        <tr class="cursor-pointer" onclick="location.href='{{ url_for('view_contact', contact_id=c.id) }}'">
+          <td class="fw-semibold">{{ c.full_name or '—' }}</td>
+          <td>{{ c.company or '—' }}</td>
+          <td>{{ c.title or '—' }}</td>
+          <td><a href="mailto:{{ c.email1 }}" onclick="event.stopPropagation()">{{ c.email1 or '—' }}</a></td>
+          <td>{{ c.phone_business or c.phone_mobile or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-5">No contacts found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Calendar results ───────────────────────────────────────────────────── -->
+{% elif result_type == 'calendar' %}
+<div class="card border-0 shadow-sm">
+  <div class="list-group list-group-flush">
+    {% for e in results %}
+    <div class="list-group-item px-4 py-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="fw-semibold mb-1">
+            {% if e.is_recurring %}<i class="fa-solid fa-rotate me-1 text-info" title="Recurring"></i>{% endif %}
+            {% if e.is_all_day %}<span class="badge bg-secondary me-1">All day</span>{% endif %}
+            {{ e.subject or '(no title)' }}
+          </div>
+          <small class="text-muted">
+            {% if e.location %}<i class="fa-solid fa-location-dot me-1"></i>{{ e.location }}&ensp;{% endif %}
+            {% if e.organizer %}<i class="fa-regular fa-user me-1"></i>{{ e.organizer }}{% endif %}
+          </small>
+        </div>
+        <small class="text-muted text-nowrap">
+          {{ (e.start_dt or '')[:10] }}
+          {% if not e.is_all_day and e.start_dt %} {{ e.start_dt[11:16] }}{% endif %}
+        </small>
+      </div>
+    </div>
+    {% else %}
+    <div class="list-group-item text-center text-muted py-5">No events found.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Pagination -->
+{% if pag.total_pages > 1 %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm justify-content-center">
+    <li class="page-item {% if not pag.has_prev %}disabled{% endif %}">
+      <a class="page-link" href="{{ request.url | replace('page='+pag.page|string, 'page='+pag.prev|string) if pag.has_prev else '#' }}">
+        <i class="fa-solid fa-chevron-left"></i>
+      </a>
+    </li>
+    {% for p in range([1, pag.page-2]|max, [pag.total_pages+1, pag.page+3]|min) %}
+    <li class="page-item {% if p == pag.page %}active{% endif %}">
+      <a class="page-link" href="{{ url_for('search', q=q, type=result_type, sender=sender, folder=folder, date_from=date_from, date_to=date_to, page=p) }}">{{ p }}</a>
+    </li>
+    {% endfor %}
+    <li class="page-item {% if not pag.has_next %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('search', q=q, type=result_type, sender=sender, folder=folder, date_from=date_from, date_to=date_to, page=pag.next) if pag.has_next else '#' }}">
+        <i class="fa-solid fa-chevron-right"></i>
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

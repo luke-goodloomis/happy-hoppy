@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Calendar - Happy Hoppy{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h5 class="mb-0 fw-semibold"><i class="fa-regular fa-calendar me-2 text-warning"></i>Calendar Events</h5>
+</div>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="get" action="{{ url_for('calendar') }}" class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <input type="text" name="q" class="form-control form-control-sm"
+               placeholder="Search events..." value="{{ q }}">
+      </div>
+      <div class="col-auto d-flex gap-1 align-items-center">
+        <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}" style="width:145px">
+        <span class="text-muted small">-</span>
+        <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}" style="width:145px">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary"><i class="fa-solid fa-filter me-1"></i>Apply</button>
+        <a href="{{ url_for('calendar') }}" class="btn btn-sm btn-outline-secondary ms-1">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white border-bottom small text-muted py-2 px-4">
+    {% if pag.total > 0 %}Showing {{ pag.showing_from }}-{{ pag.showing_to }} of {{ "{:,}".format(pag.total) }} events{% else %}No events found{% endif %}
+  </div>
+  <div class="list-group list-group-flush">
+    {% for e in results %}
+    <div class="list-group-item px-4 py-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="flex-grow-1">
+          <div class="fw-semibold mb-1">
+            {% if e.is_recurring %}<i class="fa-solid fa-rotate me-1 text-info" title="Recurring"></i>{% endif %}
+            {% if e.is_all_day %}<span class="badge bg-secondary me-1">All day</span>{% endif %}
+            {{ e.subject or '(no title)' }}
+          </div>
+          <div class="d-flex gap-3 small text-muted">
+            {% if e.location %}<span><i class="fa-solid fa-location-dot me-1"></i>{{ e.location }}</span>{% endif %}
+            {% if e.organizer %}<span><i class="fa-regular fa-user me-1"></i>{{ e.organizer }}</span>{% endif %}
+            {% if e.end_dt and e.end_dt != e.start_dt %}
+            <span><i class="fa-solid fa-arrow-right me-1"></i>{{ (e.end_dt or '')[:16] | replace('T',' ') }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="text-end text-nowrap ms-3">
+          <div class="fw-semibold small">{{ (e.start_dt or '')[:10] }}</div>
+          {% if not e.is_all_day and e.start_dt %}
+          <div class="text-muted small">{{ e.start_dt[11:16] }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="list-group-item text-center text-muted py-5">No calendar events found.</div>
+    {% endfor %}
+  </div>
+</div>
+{% if pag.total_pages > 1 %}
+<nav class="mt-3"><ul class="pagination pagination-sm justify-content-center">
+  <li class="page-item {% if not pag.has_prev %}disabled{% endif %}">
+    <a class="page-link" href="{{ url_for('calendar', q=q, date_from=date_from, date_to=date_to, page=pag.prev) }}"><i class="fa-solid fa-chevron-left"></i></a>
+  </li>
+  {% for p in range([1, pag.page-2]|max, [pag.total_pages+1, pag.page+3]|min) %}
+  <li class="page-item {% if p == pag.page %}active{% endif %}">
+    <a class="page-link" href="{{ url_for('calendar', q=q, date_from=date_from, date_to=date_to, page=p) }}">{{ p }}</a>
+  </li>
+  {% endfor %}
+  <li class="page-item {% if not pag.has_next %}disabled{% endif %}">
+    <a class="page-link" href="{{ url_for('calendar', q=q, date_from=date_from, date_to=date_to, page=pag.next) }}"><i class="fa-solid fa-chevron-right"></i></a>
+  </li>
+</ul></nav>
+{% endif %}
+{% endblock %}

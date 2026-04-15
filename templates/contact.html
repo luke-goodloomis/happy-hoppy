@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Contact - Happy Hoppy{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back
+  </a>
+</div>
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom fw-semibold py-3">
+        <i class="fa-solid fa-user-circle me-2 text-success fa-lg"></i>{{ contact.full_name or '(no name)' }}
+      </div>
+      <div class="card-body">
+        <table class="table table-sm table-borderless mb-0">
+          {% macro row(label, val) %}
+          {% if val %}<tr><th class="text-muted fw-normal small" style="width:130px">{{ label }}</th><td>{{ val }}</td></tr>{% endif %}
+          {% endmacro %}
+          {{ row('Company', contact.company) }}
+          {{ row('Title', contact.title) }}
+          {{ row('Department', contact.department) }}
+          {{ row('Email 1', contact.email1) }}
+          {{ row('Email 2', contact.email2) }}
+          {{ row('Email 3', contact.email3) }}
+          {{ row('Business Phone', contact.phone_business) }}
+          {{ row('Mobile', contact.phone_mobile) }}
+          {{ row('Home Phone', contact.phone_home) }}
+          {{ row('Birthday', (contact.birthday or '')[:10]) }}
+          {{ row('Categories', contact.categories) }}
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    {% if contact.address_business %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white border-bottom small fw-semibold">Business Address</div>
+      <div class="card-body small"><pre class="mb-0">{{ contact.address_business }}</pre></div>
+    </div>
+    {% endif %}
+    {% if contact.address_home %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white border-bottom small fw-semibold">Home Address</div>
+      <div class="card-body small"><pre class="mb-0">{{ contact.address_home }}</pre></div>
+    </div>
+    {% endif %}
+    {% if contact.notes %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom small fw-semibold">Notes</div>
+      <div class="card-body small"><pre class="mb-0 text-wrap">{{ contact.notes }}</pre></div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+<div class="mt-3">
+  <a href="{{ url_for('search', type='emails', sender=contact.email1 or contact.full_name) }}"
+     class="btn btn-sm btn-outline-primary">
+    <i class="fa-solid fa-envelope me-1"></i>Search emails from this contact
+  </a>
+</div>
+{% endblock %}
